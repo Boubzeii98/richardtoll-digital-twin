@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Richard-Toll — Jumeau numérique</title>
+<link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0B1220;
+    --panel:#101A2B;
+    --panel-border:#22314A;
+    --sand:#D9B77C;
+    --ochre:#C97B2E;
+    --river-teal:#2F6F72;
+    --roof-rust:#B5651D;
+    --roof-grey:#9C9C94;
+    --roof-sand:#D9CBB3;
+    --text-light:#EDE6D6;
+    --text-dim:#8494AC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg-void);font-family:'IBM Plex Sans',sans-serif;color:var(--text-light);overflow:hidden;}
+  #map{position:absolute;inset:0;}
+
+  .sidebar{
+    position:absolute; top:0; left:0; bottom:0; width:280px; z-index:5;
+    background:linear-gradient(180deg, rgba(16,26,43,0.96), rgba(16,26,43,0.90));
+    border-right:1px solid var(--panel-border);
+    padding:22px 20px; display:flex; flex-direction:column; gap:18px;
+    backdrop-filter: blur(6px);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em;
+    color:var(--ochre); text-transform:uppercase;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700;
+    margin:4px 0 0 0; line-height:1.25; color:var(--text-light);
+  }
+  .sub{font-size:12px; color:var(--text-dim); margin-top:2px; line-height:1.5;}
+
+  .stat-block{display:flex; flex-direction:column; gap:10px; padding-top:14px; border-top:1px solid var(--panel-border);}
+  .stat-row{display:flex; justify-content:space-between; align-items:baseline;}
+  .stat-label{font-size:11.5px; color:var(--text-dim);}
+  .stat-value{font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--sand);}
+
+  .legend{padding-top:14px; border-top:1px solid var(--panel-border);}
+  .legend-title{font-size:11.5px; color:var(--text-dim); margin-bottom:8px;}
+  .legend-bar{height:8px; border-radius:2px; background:linear-gradient(90deg, var(--sand), var(--ochre), var(--river-teal));}
+  .legend-labels{display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-dim); margin-top:5px;}
+
+  .btn{
+    margin-top:auto; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; font-weight:500;
+    background:transparent; color:var(--text-light); border:1px solid var(--panel-border);
+    padding:9px 12px; border-radius:6px; cursor:pointer; text-align:left; transition:border-color .15s;
+  }
+  .btn:hover{border-color:var(--ochre);}
+
+  .notice{
+    font-size:11px; color:var(--text-dim); line-height:1.5;
+    background:rgba(201,123,46,0.08); border:1px solid rgba(201,123,46,0.35);
+    padding:9px 10px; border-radius:6px; display:none;
+  }
+  .notice.show{display:block;}
+
+  .hud{
+    position:absolute; bottom:14px; right:16px; z-index:5;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);
+    background:rgba(16,26,43,0.85); border:1px solid var(--panel-border);
+    padding:6px 10px; border-radius:6px; pointer-events:none;
+  }
+  .hud b{color:var(--sand); font-weight:500;}
+
+  .attrib-hide .maplibregl-ctrl-attrib{background:rgba(11,18,32,0.6); color:var(--text-dim);}
+  .attrib-hide .maplibregl-ctrl-attrib a{color:var(--text-dim);}
+</style>
+</head>
+<body class="attrib-hide">
+
+<div class="sidebar">
+  <div>
+    <div class="eyebrow">Phase 0 / 1 — socle 3D</div>
+    <h1>Richard-Toll<br/>Jumeau numérique</h1>
+    <div class="sub">Bâti (Google Open Buildings) extrudé sur l'emprise communale — support d'aide à la décision d'aménagement.</div>
+  </div>
+
+  <div class="stat-block">
+    <div class="stat-row"><span class="stat-label">Bâtiments chargés</span><span class="stat-value" id="stat-count">—</span></div>
+    <div class="stat-row"><span class="stat-label">Hauteur moyenne (est.)</span><span class="stat-value" id="stat-avg">—</span></div>
+    <div class="stat-row"><span class="stat-label">Hauteur max (est.)</span><span class="stat-value" id="stat-max">—</span></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Hauteur estimée du bâti</div>
+    <div class="legend-bar"></div>
+    <div class="legend-labels"><span>~4 m</span><span>~6.5 m</span><span>~9 m+</span></div>
+  </div>
+
+  <div class="notice" id="fallback-notice">
+    Aucun fichier <code>buildings_richardtoll.geojson</code> trouvé à côté de cette page — affichage d'un échantillon de démonstration. Place le fichier généré par le script Phase 0 dans le même dossier pour voir le vrai bâti.
+  </div>
+
+  <button class="btn" id="toggle-mode">🛰️ Passer en vue analytique</button>
+  <button class="btn" id="reset-view">↺ Réinitialiser la vue</button>
+</div>
+
+<div id="map"></div>
+<div class="hud" id="hud">lat — · lon — · zoom —</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
+<script>
+  const CENTER = [-15.700, 16.4625];
+  const DEFAULT_VIEW = { center: CENTER, zoom: 15.6, pitch: 60, bearing: -17 };
+
+  const ROOF_TONES = ['#B5651D', '#9C9C94', '#D9CBB3', '#8C7B6B']; // tole rouille / tole grise / beton-sable / banco
+
+  // ---- Génère un petit échantillon de démonstration si le vrai GeoJSON
+  // n'est pas encore disponible (script Phase 0 pas encore exécuté / fichier
+  // pas encore copié à côté de cette page).
+  function buildFallbackSample() {
+    const feats = [];
+    const rows = 14, cols = 18;
+    let seed = 42;
+    const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (rand() < 0.72) {
+          const lon = CENTER[0] - 0.014 + c * 0.0016 + (rand() - 0.5) * 0.0004;
+          const lat = CENTER[1] - 0.010 + r * 0.0016 + (rand() - 0.5) * 0.0004;
+          const w = 0.00022 + rand() * 0.00018;
+          const areaClass = rand();
+          const height = areaClass < 0.6 ? 4.0 : (areaClass < 0.88 ? 6.5 : 9.0);
+          feats.push({
+            type: "Feature",
+            properties: { height_m: height, height_source: "demo_sample" },
+            geometry: {
+              type: "Polygon",
+              coordinates: [[
+                [lon, lat], [lon + w, lat], [lon + w, lat + w], [lon, lat + w], [lon, lat]
+              ]]
+            }
+          });
+        }
+      }
+    }
+    return { type: "FeatureCollection", features: feats };
+  }
+
+  // Assigne une variante de teinte de toit deterministe (basee sur les
+  // coordonnees du batiment) pour eviter l'effet "Lego uniforme" en vue
+  // realiste, sans dependre d'une vraie photo de toiture (donnee non
+  // disponible pour Richard-Toll).
+  function addRoofVariants(data) {
+    data.features.forEach((f) => {
+      const c = f.geometry.coordinates[0][0];
+      const hash = Math.abs(Math.sin(c[0] * 12345.6789 + c[1] * 98765.4321));
+      f.properties.roof_variant = Math.floor(hash * ROOF_TONES.length) % ROOF_TONES.length;
+    });
+    return data;
+  }
+
+  async function loadBuildings() {
+    try {
+      const res = await fetch('buildings_richardtoll.geojson');
+      if (!res.ok) throw new Error('not found');
+      const data = await res.json();
+      if (!data.features || !data.features.length) throw new Error('empty');
+      return { data: addRoofVariants(data), isFallback: false };
+    } catch (e) {
+      return { data: addRoofVariants(buildFallbackSample()), isFallback: true };
+    }
+  }
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        'esri-satellite': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Esri, Maxar, Earthstar Geographics'
+        },
+        'carto-dark': {
+          type: 'raster',
+          tiles: [
+            'https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
+            'https://b.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
+            'https://c.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png'
+          ],
+          tileSize: 256,
+          attribution: '© OpenStreetMap contributors © CARTO'
+        }
+      },
+      layers: [
+        { id: 'basemap-satellite', type: 'raster', source: 'esri-satellite' },
+        { id: 'basemap-dark', type: 'raster', source: 'carto-dark', layout: { visibility: 'none' } }
+      ],
+      sky: {
+        'sky-color': '#8FB3D9',
+        'sky-horizon-blend': 0.5,
+        'horizon-color': '#E8D9BE',
+        'horizon-fog-blend': 0.6,
+        'fog-color': '#D9CBB3',
+        'fog-ground-blend': 0.5
+      }
+    },
+    center: DEFAULT_VIEW.center,
+    zoom: DEFAULT_VIEW.zoom,
+    pitch: DEFAULT_VIEW.pitch,
+    bearing: DEFAULT_VIEW.bearing,
+    antialias: true
+  });
+
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+  let realisticMode = true;
+
+  map.on('load', async () => {
+    // Eclairage solaire pour que les facades reagissent a l'orientation
+    // (au lieu de blocs plats uniformement colores)
+    map.setLight({ anchor: 'map', color: '#FFF6E5', intensity: 0.55, position: [1.15, 200, 42] });
+
+    const { data, isFallback } = await loadBuildings();
+    if (isFallback) document.getElementById('fallback-notice').classList.add('show');
+
+    map.addSource('buildings', { type: 'geojson', data });
+
+    map.addLayer({
+      id: 'buildings-3d',
+      type: 'fill-extrusion',
+      source: 'buildings',
+      paint: {
+        'fill-extrusion-height': ['coalesce', ['get', 'height_m'], 4],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.96,
+        'fill-extrusion-vertical-gradient': true,
+        'fill-extrusion-color': [
+          'match', ['get', 'roof_variant'],
+          0, ROOF_TONES[0],
+          1, ROOF_TONES[1],
+          2, ROOF_TONES[2],
+          ROOF_TONES[3]
+        ]
+      }
+    });
+
+    // Stats simples calculées côté client
+    const heights = data.features.map(f => f.properties.height_m || 4);
+    const count = heights.length;
+    const avg = heights.reduce((a, b) => a + b, 0) / (count || 1);
+    const max = Math.max(...heights, 0);
+    document.getElementById('stat-count').textContent = count.toLocaleString('fr-FR');
+    document.getElementById('stat-avg').textContent = avg.toFixed(1) + ' m';
+    document.getElementById('stat-max').textContent = max.toFixed(1) + ' m';
+  });
+
+  map.on('mousemove', (e) => {
+    const { lng, lat } = e.lngLat;
+    document.getElementById('hud').innerHTML =
+      `lat <b>${lat.toFixed(5)}</b> · lon <b>${lng.toFixed(5)}</b> · zoom <b>${map.getZoom().toFixed(1)}</b>`;
+  });
+
+  document.getElementById('reset-view').addEventListener('click', () => {
+    map.flyTo({ ...DEFAULT_VIEW, duration: 900 });
+  });
+
+  document.getElementById('toggle-mode').addEventListener('click', () => {
+    realisticMode = !realisticMode;
+    map.setLayoutProperty('basemap-satellite', 'visibility', realisticMode ? 'visible' : 'none');
+    map.setLayoutProperty('basemap-dark', 'visibility', realisticMode ? 'none' : 'visible');
+
+    if (map.getLayer('buildings-3d')) {
+      map.setPaintProperty('buildings-3d', 'fill-extrusion-color', realisticMode
+        ? ['match', ['get', 'roof_variant'], 0, ROOF_TONES[0], 1, ROOF_TONES[1], 2, ROOF_TONES[2], ROOF_TONES[3]]
+        : ['interpolate', ['linear'], ['coalesce', ['get', 'height_m'], 4], 4, '#D9B77C', 6.5, '#C97B2E', 9, '#2F6F72']
+      );
+    }
+
+    document.getElementById('toggle-mode').textContent = realisticMode
+      ? '🛰️ Passer en vue analytique'
+      : '📊 Passer en vue réaliste';
+  });
+</script>
+</body>
+</html>
