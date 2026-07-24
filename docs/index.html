@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Richard-Toll — Jumeau numérique</title>
-<link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="https://unpkg.com/maplibre-gl@6.0.0/dist/maplibre-gl.css" rel="stylesheet" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -126,6 +126,12 @@
   </label>
   <div class="checkbox-hint">Décoche pour comparer l'emprise réelle des bâtiments avec l'imagerie satellite en dessous.</div>
 
+  <label class="checkbox-row" for="toggle-terrain">
+    <input type="checkbox" id="toggle-terrain" checked />
+    <span>Relief 3D</span>
+  </label>
+  <div class="checkbox-hint">Décoche pour repasser à un sol plat — la différence confirme que le relief est bien actif (source : AWS Terrarium, ~30m, différente du MNT Copernicus utilisé dans ArcGIS Pro).</div>
+
   <div class="legend" id="legend-realistic">
     <div class="legend-title">Teintes de toiture (illustratives)</div>
     <div class="swatch-row">
@@ -141,6 +147,9 @@
     <div class="legend-title">Hauteur estimée du bâti</div>
     <div class="legend-bar"></div>
     <div class="legend-labels"><span>~4 m</span><span>~6.5 m</span><span>~9 m+</span></div>
+    <div class="legend-title" style="margin-top:12px">Altitude du terrain</div>
+    <div class="legend-bar" style="background:linear-gradient(90deg, #1a9850, #a6d96a, #fee08b, #f46d43, #d73027)"></div>
+    <div class="legend-labels"><span>~0 m</span><span>~12 m</span><span>~24 m+</span></div>
   </div>
 
   <div class="notice" id="fallback-notice">
@@ -163,7 +172,7 @@
 <div id="map"></div>
 <div class="hud" id="hud">lat — · lon — · zoom —</div>
 
-<script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/maplibre-gl@6.0.0/dist/maplibre-gl.js"></script>
 <script>
   const CENTER = [-15.700, 16.4625];
   const DEFAULT_VIEW = { center: CENTER, zoom: 15.6, pitch: 60, bearing: -17 };
@@ -260,7 +269,25 @@
       },
       layers: [
         { id: 'basemap-satellite', type: 'raster', source: 'esri-satellite' },
-        { id: 'basemap-dark', type: 'raster', source: 'carto-dark', layout: { visibility: 'none' } }
+        { id: 'basemap-dark', type: 'raster', source: 'carto-dark', layout: { visibility: 'none' } },
+        {
+          id: 'color-relief',
+          type: 'color-relief',
+          source: 'terrain-dem',
+          layout: { visibility: 'none' },
+          paint: {
+            'color-relief-color': [
+              'interpolate', ['linear'], ['elevation'],
+              -2, '#1a9850',
+              4, '#66bd63',
+              8, '#a6d96a',
+              12, '#fee08b',
+              16, '#fdae61',
+              20, '#f46d43',
+              24, '#d73027'
+            ]
+          }
+        }
       ]
     },
     center: DEFAULT_VIEW.center,
@@ -336,6 +363,10 @@
     }
   });
 
+  document.getElementById('toggle-terrain').addEventListener('change', (e) => {
+    map.setTerrain(e.target.checked ? { source: 'terrain-dem', exaggeration: 1.2 } : null);
+  });
+
   document.getElementById('rotate-left').addEventListener('click', () => {
     map.easeTo({ bearing: map.getBearing() - 30, duration: 400 });
   });
@@ -353,6 +384,7 @@
     realisticMode = !realisticMode;
     map.setLayoutProperty('basemap-satellite', 'visibility', realisticMode ? 'visible' : 'none');
     map.setLayoutProperty('basemap-dark', 'visibility', realisticMode ? 'none' : 'visible');
+    map.setLayoutProperty('color-relief', 'visibility', realisticMode ? 'none' : 'visible');
 
     if (map.getLayer('buildings-3d')) {
       map.setPaintProperty('buildings-3d', 'fill-extrusion-color', realisticMode
