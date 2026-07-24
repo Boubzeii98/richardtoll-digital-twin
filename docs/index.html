@@ -264,7 +264,10 @@
   map.on('load', async () => {
     // Relief reel du terrain (MNT), pour un vrai effet 3D (cordon dunaire
     // qui se souleve, vallee du fleuve) plutot qu'un sol plat.
-    map.setTerrain({ source: 'terrain-dem', exaggeration: 2.5 });
+    // Exageration volontairement modeste : Richard-Toll est tres plat,
+    // un facteur trop eleve amplifie le bruit de la donnee (mondiale,
+    // ~30m) et deforme visuellement les batiments qui suivent le terrain.
+    map.setTerrain({ source: 'terrain-dem', exaggeration: 1.2 });
 
     // Eclairage solaire pour que les facades reagissent a l'orientation
     // (au lieu de blocs plats uniformement colores)
