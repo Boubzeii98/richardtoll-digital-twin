@@ -52,6 +52,10 @@
   .legend-bar{height:8px; border-radius:2px; background:linear-gradient(90deg, var(--sand), var(--ochre), var(--river-teal));}
   .legend-labels{display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-dim); margin-top:5px;}
 
+  .swatch-row{display:flex; gap:6px;}
+  .swatch{width:22px; height:22px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15);}
+  .legend-note{font-size:10px; color:var(--text-dim); line-height:1.4; margin-top:8px;}
+
   .btn{
     margin-top:auto; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; font-weight:500;
     background:transparent; color:var(--text-light); border:1px solid var(--panel-border);
@@ -109,7 +113,18 @@
     <div class="stat-row"><span class="stat-label">Hauteur max (est.)</span><span class="stat-value" id="stat-max">—</span></div>
   </div>
 
-  <div class="legend">
+  <div class="legend" id="legend-realistic">
+    <div class="legend-title">Teintes de toiture (illustratives)</div>
+    <div class="swatch-row">
+      <span class="swatch" style="background:#B5651D"></span>
+      <span class="swatch" style="background:#9C9C94"></span>
+      <span class="swatch" style="background:#D9CBB3"></span>
+      <span class="swatch" style="background:#8C7B6B"></span>
+    </div>
+    <div class="legend-note">Variation ajoutée pour l'aspect visuel — ne code aucune donnée réelle.</div>
+  </div>
+
+  <div class="legend" id="legend-analytic" style="display:none">
     <div class="legend-title">Hauteur estimée du bâti</div>
     <div class="legend-bar"></div>
     <div class="legend-labels"><span>~4 m</span><span>~6.5 m</span><span>~9 m+</span></div>
@@ -323,6 +338,9 @@
         : ['interpolate', ['linear'], ['coalesce', ['get', 'height_m'], 4], 4, '#D9B77C', 6.5, '#C97B2E', 9, '#2F6F72']
       );
     }
+
+    document.getElementById('legend-realistic').style.display = realisticMode ? 'block' : 'none';
+    document.getElementById('legend-analytic').style.display = realisticMode ? 'none' : 'block';
 
     document.getElementById('toggle-mode').textContent = realisticMode
       ? '🛰️ Passer en vue analytique'
