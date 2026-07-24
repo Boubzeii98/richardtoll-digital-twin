@@ -66,6 +66,22 @@
   }
   .notice.show{display:block;}
 
+  .hint{
+    font-size:11px; color:var(--text-dim); line-height:1.4;
+    padding:8px 10px; border-radius:6px; background:rgba(255,255,255,0.03);
+  }
+
+  .rotate-controls{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px;
+  }
+  .btn-icon{
+    font-family:'IBM Plex Sans',sans-serif; font-size:11.5px; font-weight:500;
+    background:transparent; color:var(--text-light); border:1px solid var(--panel-border);
+    padding:8px 6px; border-radius:6px; cursor:pointer; text-align:center; transition:border-color .15s;
+  }
+  .btn-icon:hover{border-color:var(--ochre);}
+  .btn-icon:active{background:rgba(201,123,46,0.15);}
+
   .hud{
     position:absolute; bottom:14px; right:16px; z-index:5;
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);
@@ -101,6 +117,15 @@
 
   <div class="notice" id="fallback-notice">
     Aucun fichier <code>buildings_richardtoll.geojson</code> trouvé à côté de cette page — affichage d'un échantillon de démonstration. Place le fichier généré par le script Phase 0 dans le même dossier pour voir le vrai bâti.
+  </div>
+
+  <div class="hint">🖱️ Clic droit + glisser (ou Ctrl + glisser) fait aussi tourner/incliner la vue</div>
+
+  <div class="rotate-controls">
+    <button class="btn-icon" id="tilt-up" title="Incliner vers le haut">⬆︎ Incliner</button>
+    <button class="btn-icon" id="tilt-down" title="Incliner vers le bas">⬇︎ Incliner</button>
+    <button class="btn-icon" id="rotate-left" title="Tourner à gauche">⟲ Tourner</button>
+    <button class="btn-icon" id="rotate-right" title="Tourner à droite">⟳ Tourner</button>
   </div>
 
   <button class="btn" id="toggle-mode">🛰️ Passer en vue analytique</button>
@@ -183,6 +208,7 @@
           type: 'raster',
           tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
           tileSize: 256,
+          maxzoom: 17,
           attribution: 'Esri, Maxar, Earthstar Geographics'
         },
         'carto-dark': {
@@ -194,6 +220,14 @@
           ],
           tileSize: 256,
           attribution: '© OpenStreetMap contributors © CARTO'
+        },
+        'terrain-dem': {
+          type: 'raster-dem',
+          tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          encoding: 'terrarium',
+          maxzoom: 15,
+          attribution: 'Terrain: AWS Terrain Tiles / Mapzen'
         }
       },
       layers: [
@@ -213,6 +247,10 @@
   let realisticMode = true;
 
   map.on('load', async () => {
+    // Relief reel du terrain (MNT), pour un vrai effet 3D (cordon dunaire
+    // qui se souleve, vallee du fleuve) plutot qu'un sol plat.
+    map.setTerrain({ source: 'terrain-dem', exaggeration: 2.5 });
+
     // Eclairage solaire pour que les facades reagissent a l'orientation
     // (au lieu de blocs plats uniformement colores)
     map.setLight({ anchor: 'map', color: '#FFF6E5', intensity: 0.55, position: [1.15, 200, 42] });
@@ -259,6 +297,19 @@
 
   document.getElementById('reset-view').addEventListener('click', () => {
     map.flyTo({ ...DEFAULT_VIEW, duration: 900 });
+  });
+
+  document.getElementById('rotate-left').addEventListener('click', () => {
+    map.easeTo({ bearing: map.getBearing() - 30, duration: 400 });
+  });
+  document.getElementById('rotate-right').addEventListener('click', () => {
+    map.easeTo({ bearing: map.getBearing() + 30, duration: 400 });
+  });
+  document.getElementById('tilt-up').addEventListener('click', () => {
+    map.easeTo({ pitch: Math.min(map.getPitch() + 12, 85), duration: 400 });
+  });
+  document.getElementById('tilt-down').addEventListener('click', () => {
+    map.easeTo({ pitch: Math.max(map.getPitch() - 12, 0), duration: 400 });
   });
 
   document.getElementById('toggle-mode').addEventListener('click', () => {
