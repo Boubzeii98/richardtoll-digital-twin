@@ -47,6 +47,13 @@
   .stat-label{font-size:11.5px; color:var(--text-dim);}
   .stat-value{font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--sand);}
 
+  .checkbox-row{
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:12.5px; color:var(--text-light); padding-top:2px;
+  }
+  .checkbox-row input{accent-color:var(--ochre); width:15px; height:15px; cursor:pointer;}
+  .checkbox-hint{font-size:10.5px; color:var(--text-dim); line-height:1.4; margin-top:-4px;}
+
   .legend{padding-top:14px; border-top:1px solid var(--panel-border);}
   .legend-title{font-size:11.5px; color:var(--text-dim); margin-bottom:8px;}
   .legend-bar{height:8px; border-radius:2px; background:linear-gradient(90deg, var(--sand), var(--ochre), var(--river-teal));}
@@ -112,6 +119,12 @@
     <div class="stat-row"><span class="stat-label">Hauteur moyenne (est.)</span><span class="stat-value" id="stat-avg">—</span></div>
     <div class="stat-row"><span class="stat-label">Hauteur max (est.)</span><span class="stat-value" id="stat-max">—</span></div>
   </div>
+
+  <label class="checkbox-row" for="toggle-buildings">
+    <input type="checkbox" id="toggle-buildings" checked />
+    <span>Afficher les bâtiments</span>
+  </label>
+  <div class="checkbox-hint">Décoche pour comparer l'emprise réelle des bâtiments avec l'imagerie satellite en dessous.</div>
 
   <div class="legend" id="legend-realistic">
     <div class="legend-title">Teintes de toiture (illustratives)</div>
@@ -315,6 +328,12 @@
 
   document.getElementById('reset-view').addEventListener('click', () => {
     map.flyTo({ ...DEFAULT_VIEW, duration: 900 });
+  });
+
+  document.getElementById('toggle-buildings').addEventListener('change', (e) => {
+    if (map.getLayer('buildings-3d')) {
+      map.setLayoutProperty('buildings-3d', 'visibility', e.target.checked ? 'visible' : 'none');
+    }
   });
 
   document.getElementById('rotate-left').addEventListener('click', () => {
