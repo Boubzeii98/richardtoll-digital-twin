@@ -1,0 +1,22 @@
+# Donnees volumineuses generees localement (pas versionnees sur GitHub)
+richardtoll_data/*.tif
+richardtoll_data/*.tiff
+
+# Environnements / caches Python
+__pycache__/
+*.pyc
+*.pyo
+.spyproject/
+.spyderproject
+.spyderworkspace
+venv/
+env/
+
+# Geodatabases / projets ArcGIS (lourds, binaires)
+*.gdb/
+*.aprx.bak
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
