@@ -233,7 +233,7 @@
     </label>
     <div class="legend-bar" style="margin-top:6px; background:linear-gradient(90deg, rgb(26,150,65), rgb(166,217,106), rgb(253,174,97), rgb(215,25,28))"></div>
     <div class="legend-labels"><span>faible</span><span></span><span>fort</span></div>
-    <div class="legend-note">Score composite (distance à l'eau + altitude + pente), Phase 2b — l'eau elle-même est transparente.</div>
+    <div class="legend-note">Score composite (distance à l'eau + altitude + pente), Phase 2b — l'eau elle-même est transparente. Les bâtiments se colorent aussi selon leur propre score.</div>
   </div>
 
   <div class="notice" id="fallback-notice">
@@ -262,6 +262,39 @@
   const DEFAULT_VIEW = { center: CENTER, zoom: 15.6, pitch: 60, bearing: -17 };
 
   const ROOF_TONES = ['#B5651D', '#9C9C94', '#D9CBB3', '#8C7B6B']; // tole rouille / tole grise / beton-sable / banco
+
+  const FLOOD_COLOR_EXPR = [
+    'interpolate', ['linear'], ['coalesce', ['get', 'flood_risk'], 1.5],
+    0, 'rgb(26,150,65)',
+    1, 'rgb(166,217,106)',
+    2, 'rgb(253,174,97)',
+    3, 'rgb(215,25,28)'
+  ];
+  const HEIGHT_COLOR_EXPR = [
+    'interpolate', ['linear'], ['coalesce', ['get', 'height_m'], 4],
+    4, '#D9B77C', 6.5, '#C97B2E', 9, '#2F6F72'
+  ];
+  const ROOF_COLOR_EXPR = [
+    'match', ['get', 'roof_variant'],
+    0, ROOF_TONES[0], 1, ROOF_TONES[1], 2, ROOF_TONES[2], ROOF_TONES[3]
+  ];
+
+  // Choisit la coloration des batiments selon le mode actif et si le
+  // risque d'inondation est affiche -- une seule fonction, appelee au
+  // chargement et a chaque bascule, pour ne jamais desynchroniser l'etat.
+  function updateBuildingsColor() {
+    if (!map.getLayer('buildings-3d')) return;
+    const floodChecked = document.getElementById('toggle-flood').checked;
+    let expr;
+    if (realisticMode) {
+      expr = ROOF_COLOR_EXPR;
+    } else if (floodChecked) {
+      expr = FLOOD_COLOR_EXPR;
+    } else {
+      expr = HEIGHT_COLOR_EXPR;
+    }
+    map.setPaintProperty('buildings-3d', 'fill-extrusion-color', expr);
+  }
 
   // ---- Génère un petit échantillon de démonstration si le vrai GeoJSON
   // n'est pas encore disponible (script Phase 0 pas encore exécuté / fichier
@@ -423,15 +456,10 @@
         'fill-extrusion-base': 0,
         'fill-extrusion-opacity': 0.96,
         'fill-extrusion-vertical-gradient': true,
-        'fill-extrusion-color': [
-          'match', ['get', 'roof_variant'],
-          0, ROOF_TONES[0],
-          1, ROOF_TONES[1],
-          2, ROOF_TONES[2],
-          ROOF_TONES[3]
-        ]
+        'fill-extrusion-color': ROOF_COLOR_EXPR
       }
     });
+    updateBuildingsColor();
 
     // Stats simples calculées côté client
     const heights = data.features.map(f => f.properties.height_m || 4);
@@ -477,6 +505,7 @@
 
   document.getElementById('toggle-flood').addEventListener('change', (e) => {
     map.setLayoutProperty('flood-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+    updateBuildingsColor();
   });
 
   document.getElementById('rotate-left').addEventListener('click', () => {
@@ -507,10 +536,7 @@
     );
 
     if (map.getLayer('buildings-3d')) {
-      map.setPaintProperty('buildings-3d', 'fill-extrusion-color', realisticMode
-        ? ['match', ['get', 'roof_variant'], 0, ROOF_TONES[0], 1, ROOF_TONES[1], 2, ROOF_TONES[2], ROOF_TONES[3]]
-        : ['interpolate', ['linear'], ['coalesce', ['get', 'height_m'], 4], 4, '#D9B77C', 6.5, '#C97B2E', 9, '#2F6F72']
-      );
+      updateBuildingsColor();
     }
 
     document.getElementById('legend-realistic').style.display = realisticMode ? 'block' : 'none';
