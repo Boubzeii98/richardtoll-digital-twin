@@ -103,11 +103,36 @@
 
   .attrib-hide .maplibregl-ctrl-attrib{background:rgba(11,18,32,0.6); color:var(--text-dim);}
   .attrib-hide .maplibregl-ctrl-attrib a{color:var(--text-dim);}
+
+  .sidebar-toggle{
+    display:none; position:absolute; top:14px; left:14px; z-index:6;
+    width:38px; height:38px; border-radius:8px; border:1px solid var(--panel-border);
+    background:rgba(16,26,43,0.92); color:var(--text-light); font-size:16px;
+    align-items:center; justify-content:center; cursor:pointer;
+  }
+
+  /* --- Responsive : mobile / petits ecrans --- */
+  @media (max-width: 720px){
+    .sidebar{
+      width:min(86vw, 320px); max-height:82vh; bottom:auto;
+      border-radius:0 12px 12px 0; box-shadow:0 12px 32px rgba(0,0,0,0.45);
+      overflow-y:auto; transition:transform .25s ease; padding:64px 18px 20px 18px;
+    }
+    .sidebar.collapsed{ transform:translateX(-105%); }
+    .sidebar-toggle{ display:flex; }
+    .hud{ font-size:9.5px; padding:5px 8px; bottom:8px; right:8px; }
+    h1{ font-size:16.5px; }
+    .rotate-controls{ grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 420px){
+    .sidebar{ width:100vw; border-radius:0 0 12px 0; }
+  }
 </style>
 </head>
 <body class="attrib-hide">
 
-<div class="sidebar">
+<button class="sidebar-toggle" id="sidebar-toggle" aria-label="Afficher/masquer le panneau">☰</button>
+<div class="sidebar" id="sidebar">
   <div>
     <div class="eyebrow">Phase 0 / 1 — socle 3D</div>
     <h1>Richard-Toll<br/>Jumeau numérique</h1>
@@ -355,6 +380,10 @@
 
   document.getElementById('reset-view').addEventListener('click', () => {
     map.flyTo({ ...DEFAULT_VIEW, duration: 900 });
+  });
+
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('collapsed');
   });
 
   document.getElementById('toggle-buildings').addEventListener('change', (e) => {
